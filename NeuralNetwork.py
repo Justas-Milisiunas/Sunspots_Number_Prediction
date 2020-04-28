@@ -108,7 +108,7 @@ class NeuralNetwork:
         :param print_info: print epoch info
         """
         normalized_data = self.__normalize_data(dataset)
-        # self.__denormalize_data(dataset, 0)
+
         for epoch in range(n_epoch):
             sum_error = 0
             for row in normalized_data:
@@ -123,17 +123,31 @@ class NeuralNetwork:
             if print_info:
                 print(f">epoch={epoch}, lrate={l_rate}, error={sum_error}")
 
-    def get_error(self, dataset, print_info=False, min_=None, max_=None):
+    def validate(self, dataset, print_info=False):
+        """
+        Validates neural network by measuring prediction accuracy
+        :param dataset: Validation data set
+        :param print_info: Print results to console
+        :return: MSE (Mean-Square Error), MAD (Median Absolute Deviation), errors list, predictions list
+        """
+        errors = 0
+        errors_list = []
+        expected_prediction = []
         for row in dataset:
             prediction = self.predict(row)
-            prediction = unnormalize_number(prediction, min_number, max_number)
-            expected_output = unnormalize_number(row[-1], min_number, max_number)
-            # print('Expected=%d, Got=%d' % (row[-1], prediction))
-            error = np.abs(expected_output - prediction)
-            if error >= max_error:
-                max_error = error
+            expected_output = row[-1]
+
             errors += (expected_output - prediction) ** 2
-            print(f"Expected={expected_output} Got={prediction}")
+            errors_list.append(expected_output - prediction)
+            expected_prediction.append([expected_output, prediction])
+            if print_info:
+                print(f"Expected={expected_output} Prediction={prediction}")
+
+        mse = errors / len(dataset)
+        if print_info:
+            print(f"MSE: {mse}")
+
+        return mse, np.median(np.abs(errors_list)), errors_list, expected_prediction
 
     def predict(self, row):
         """
