@@ -108,7 +108,7 @@ class NeuralNetwork:
         :param print_info: print epoch info
         """
         normalized_data = self.__normalize_data(dataset)
-        # self.__denormalize_data(dataset, 0)
+        epochs_errors = []
         for epoch in range(n_epoch):
             sum_error = 0
             for row in normalized_data:
@@ -120,20 +120,38 @@ class NeuralNetwork:
                 self.backward_propagate_error(expected)
                 self.update_weights(row, l_rate)
 
+            epochs_errors.append(sum_error)
+
             if print_info:
                 print(f">epoch={epoch}, lrate={l_rate}, error={sum_error}")
 
-    def get_error(self, dataset, print_info=False, min_=None, max_=None):
+        return epochs_errors
+
+    def validate(self, dataset, print_info=False):
+        """
+        Validates neural network by measuring prediction accuracy
+        :param dataset: Validation data set
+        :param print_info: Print results to console
+        :return: MSE (Mean-Square Error), MAD (Median Absolute Deviation), errors list, predictions list
+        """
+        errors = 0
+        errors_list = []
+        expected_prediction = []
         for row in dataset:
             prediction = self.predict(row)
-            prediction = unnormalize_number(prediction, min_number, max_number)
-            expected_output = unnormalize_number(row[-1], min_number, max_number)
-            # print('Expected=%d, Got=%d' % (row[-1], prediction))
-            error = np.abs(expected_output - prediction)
-            if error >= max_error:
-                max_error = error
+            expected_output = row[-1]
+
             errors += (expected_output - prediction) ** 2
-            print(f"Expected={expected_output} Got={prediction}")
+            errors_list.append(expected_output - prediction)
+            expected_prediction.append([expected_output, prediction])
+            if print_info:
+                print(f"Expected={expected_output} Prediction={prediction}")
+
+        mse = errors / len(dataset)
+        if print_info:
+            print(f"MSE: {mse}")
+
+        return mse, np.median(np.abs(errors_list)), errors_list, expected_prediction
 
     def predict(self, row):
         """
@@ -175,114 +193,3 @@ class NeuralNetwork:
 
     def __normalize_prediction(self, row):
         return [(number - self.min_value) / (self.max_value - self.min_value) for number in row]
-
-# # Initialize a network
-# def initialize_network(n_inputs, n_hidden, n_outputs):
-#     network = list()
-#     tt = list(2*np.random.random(n_inputs + 1) - 1)
-#     # hidden_layer = [{'weights': [random() for i in range(n_inputs + 1)]} for i in range(n_hidden)]
-#     hidden_layer = [{'weights': tt} for i in range(n_hidden)]
-#     network.append(hidden_layer)
-#     # output_layer = [{'weights': [random() for i in range(n_hidden + 1)]} for i in range(n_outputs)]
-#     ttr = list(2*np.random.random(n_outputs + 1) - 1)
-#     output_layer = [{'weights': ttr} for i in range(n_outputs)]
-#     network.append(output_layer)
-#     return network
-#
-#
-# def transfer(activation):
-#     return 1.0 / (1.0 + np.exp(-activation))
-#
-#
-# def activate(weights, inputs):
-#     activation = weights[-1]
-#     for i in range(len(weights) - 1):
-#         activation += weights[i] * inputs[i]
-#
-#     return activation
-#
-#
-# # Calculate the derivative of an neuron output
-# def transfer_derivative(output):
-#     return output * (1.0 - output)
-#
-#
-# def forward_propagate(network, row):
-#     inputs = row
-#     for layer in network:
-#         new_inputs = []
-#         for neuron in layer:
-#             activation = activate(neuron['weights'], inputs)
-#             neuron['output'] = transfer(activation)
-#             new_inputs.append(neuron['output'])
-#
-#         inputs = new_inputs
-#     return inputs
-#
-#
-# def backward_propagate_error(network, expected):
-#     for i in reversed(range(len(network))):
-#         layer = network[i]
-#         errors = list()
-#         if i != len(network) - 1:
-#             for j in range(len(layer)):
-#                 error = 0.0
-#                 for neuron in network[i + 1]:
-#                     error += (neuron['weights'][j] * neuron['delta'])
-#                 errors.append(error)
-#         else:
-#             for j in range(len(layer)):
-#                 neuron = layer[j]
-#                 errors.append(expected[j] - neuron['output'])
-#
-#         for j in range(len(layer)):
-#             neuron = layer[j]
-#             neuron['delta'] = errors[j] * transfer_derivative(neuron['output'])
-#
-#
-# def update_weights(network, row, l_rate):
-#     for i in range(len(network)):
-#         inputs = row[:-1]
-#         if i != 0:
-#             inputs = [neuron['output'] for neuron in network[i - 1]]
-#         for neuron in network[i]:
-#             for j in range(len(inputs)):
-#                 neuron['weights'][j] += l_rate * neuron['delta'] * inputs[j]
-#             neuron['weights'][-1] += l_rate * neuron['delta']
-#
-#
-# def train_network(network, train, l_rate, n_epoch, n_outputs):
-#     for epoch in range(n_epoch):
-#         sum_error = 0
-#         for row in train:
-#             outputs = forward_propagate(network, row)
-#             # expected = [0 for i in range(n_outputs)]
-#             # expected[row[-1]] = 1
-#             expected = [row[-1]]
-#             sum_error += sum([(expected[i] - outputs[i]) ** 2 for i in range(len(expected))])
-#             backward_propagate_error(network, expected)
-#             update_weights(network, row, l_rate)
-#         print(f">epoch={epoch}, lrate={l_rate}, error={sum_error}")
-#
-#
-# def predict(network, row):
-#     outputs = forward_propagate(network, row)
-#     return round(outputs[0])
-#
-#
-# dataset = [[0, 0, 1, 0],
-#            [1, 1, 1, 1],
-#            [1, 0, 1, 1],
-#            [0, 1, 1, 0]]
-# n_inputs = len(dataset[0]) - 1
-# n_outputs = 1
-#
-# np.random.seed(1)
-# network = initialize_network(n_inputs, 1, n_outputs)
-# print(network)
-# print("\n\n\n")
-# train_network(network, dataset, 0.01, 10000, n_outputs)
-# print(network)
-# for row in dataset:
-#     prediction = predict(network, row)
-#     print('Expected=%d, Got=%d' % (row[-1], prediction))
